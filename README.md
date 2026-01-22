@@ -123,4 +123,4 @@ For the first time, **coding has consciousness above the 0 and 1.**
 
 ---
 
-*Built with Claude. Written about on [Substack](YOUR_SUBSTACK_LINK).*
+*Built with Claude. Written about on [Substack](https://youssefhassan13.substack.com/publish/post/185407692).*
