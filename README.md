@@ -123,4 +123,4 @@ For the first time, **coding has consciousness above the 0 and 1.**
 
 ---
 
-*Built with Claude. Written about on [Substack](https://youssefhassan13.substack.com/publish/post/185407692).*
+*Built with Claude. Written about on [Substack](https://open.substack.com/pub/youssefhassan13/p/i-built-tetris-in-webassembly-in?r=ecc3z&utm_campaign=post&utm_medium=web&showWelcomeOnShare=true).*
