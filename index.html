@@ -3,393 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WASM Tetris</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+  <title>WASM Tetris - Pure WebAssembly</title>
   <style>
-    :root {
-      --bg-dark: #0a0a0f;
-      --bg-panel: #12121a;
-      --border-glow: #00ffff;
-      --text-primary: #e0e0e0;
-      --text-accent: #00ffff;
-      --text-score: #ff00ff;
-      
-      /* Piece colors - vibrant neon */
-      --color-i: #00f5ff;
-      --color-o: #ffea00;
-      --color-t: #d000ff;
-      --color-s: #00ff6a;
-      --color-z: #ff3366;
-      --color-j: #3366ff;
-      --color-l: #ff9500;
-      
-      /* Ghost piece */
-      --ghost-opacity: 0.25;
-    }
-
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
     body {
       min-height: 100vh;
-      background: var(--bg-dark);
-      background-image: 
-        radial-gradient(ellipse at 20% 80%, rgba(0, 255, 255, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 20%, rgba(255, 0, 255, 0.08) 0%, transparent 50%),
-        linear-gradient(180deg, #0a0a0f 0%, #0f0f1a 100%);
+      background: #050508;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-family: 'Rajdhani', sans-serif;
-      color: var(--text-primary);
-      overflow: hidden;
+      font-family: monospace;
+      color: #00ffff;
     }
-
-    .game-title {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 3rem;
-      font-weight: 900;
-      letter-spacing: 0.3em;
-      margin-bottom: 1.5rem;
-      background: linear-gradient(135deg, var(--border-glow) 0%, var(--text-score) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      text-shadow: 0 0 40px rgba(0, 255, 255, 0.5);
-      animation: titlePulse 2s ease-in-out infinite;
-    }
-
-    @keyframes titlePulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.85; }
-    }
-
-    .game-container {
-      display: flex;
-      gap: 2rem;
-      align-items: flex-start;
-    }
-
-    .game-board-wrapper {
-      position: relative;
-      padding: 4px;
-      background: linear-gradient(135deg, var(--border-glow), var(--text-score));
-      border-radius: 8px;
-      box-shadow: 
-        0 0 30px rgba(0, 255, 255, 0.3),
-        0 0 60px rgba(255, 0, 255, 0.2),
-        inset 0 0 20px rgba(0, 0, 0, 0.5);
-    }
-
-    #gameCanvas {
-      display: block;
-      background: var(--bg-dark);
-      border-radius: 4px;
-    }
-
-    .side-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      min-width: 180px;
-    }
-
-    .panel-box {
-      background: var(--bg-panel);
-      border: 2px solid rgba(0, 255, 255, 0.3);
-      border-radius: 8px;
-      padding: 1.2rem;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .panel-box::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, var(--border-glow), transparent);
-    }
-
-    .panel-label {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.75rem;
-      letter-spacing: 0.2em;
-      color: var(--text-accent);
-      text-transform: uppercase;
-      margin-bottom: 0.8rem;
-      opacity: 0.8;
-    }
-
-    .panel-value {
-      font-family: 'Orbitron', sans-serif;
+    
+    h1 {
       font-size: 2rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
-    }
-
-    .score-value {
-      color: var(--text-score);
-      text-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
-    }
-
-    #nextPieceCanvas {
-      display: block;
-      margin: 0 auto;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 4px;
-    }
-
-    .controls-box {
-      font-size: 0.85rem;
-      line-height: 1.8;
-    }
-
-    .control-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .control-key {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 0.7rem;
-      padding: 0.2rem 0.5rem;
-      background: rgba(0, 255, 255, 0.15);
-      border: 1px solid rgba(0, 255, 255, 0.3);
-      border-radius: 3px;
-      color: var(--text-accent);
-    }
-
-    .game-over-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.85);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 100;
-      animation: fadeIn 0.5s ease;
-    }
-
-    .game-over-overlay.visible {
-      display: flex;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    .game-over-text {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 4rem;
-      font-weight: 900;
-      color: var(--text-score);
-      text-shadow: 0 0 40px rgba(255, 0, 255, 0.8);
+      letter-spacing: 0.5em;
       margin-bottom: 1rem;
-      animation: glitch 1s ease-in-out infinite;
+      text-shadow: 0 0 20px #00ffff;
     }
-
-    @keyframes glitch {
-      0%, 100% { transform: translate(0); }
-      20% { transform: translate(-2px, 2px); }
-      40% { transform: translate(2px, -2px); }
-      60% { transform: translate(-2px, -2px); }
-      80% { transform: translate(2px, 2px); }
+    
+    .subtitle {
+      font-size: 0.8rem;
+      color: #666;
+      margin-bottom: 1rem;
     }
-
-    .final-score {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
-      color: var(--text-primary);
-      margin-bottom: 2rem;
+    
+    #game {
+      border: 2px solid #00ffff;
+      box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
     }
-
-    .restart-btn {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1rem;
-      letter-spacing: 0.2em;
-      padding: 1rem 2.5rem;
-      background: transparent;
-      border: 2px solid var(--border-glow);
-      color: var(--text-accent);
-      cursor: pointer;
-      border-radius: 4px;
-      transition: all 0.3s ease;
-      text-transform: uppercase;
+    
+    .controls {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #888;
     }
-
-    .restart-btn:hover {
-      background: var(--border-glow);
-      color: var(--bg-dark);
-      box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
-    }
-
-    .line-clear-effect {
-      position: fixed;
-      pointer-events: none;
-      z-index: 50;
-    }
-
-    /* Mobile touch controls */
-    .touch-controls {
-      display: none;
-      margin-top: 1.5rem;
-      gap: 0.5rem;
-    }
-
-    .touch-btn {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 1.5rem;
-      width: 60px;
-      height: 60px;
-      background: var(--bg-panel);
-      border: 2px solid rgba(0, 255, 255, 0.4);
-      color: var(--text-accent);
-      border-radius: 8px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: manipulation;
-    }
-
-    .touch-btn:active {
-      background: rgba(0, 255, 255, 0.2);
-    }
-
-    .touch-row {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-    }
-
-    @media (max-width: 768px) {
-      .game-title {
-        font-size: 1.8rem;
-        margin-bottom: 1rem;
-      }
-
-      .game-container {
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-      }
-
-      .side-panel {
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: center;
-        min-width: auto;
-        gap: 0.8rem;
-      }
-
-      .panel-box {
-        padding: 0.8rem 1rem;
-      }
-
-      .panel-value {
-        font-size: 1.4rem;
-      }
-
-      .controls-box {
-        display: none;
-      }
-
-      .touch-controls {
-        display: flex;
-        flex-direction: column;
-      }
+    
+    .controls span {
+      color: #00ffff;
+      padding: 2px 8px;
+      border: 1px solid #00ffff;
+      margin: 0 4px;
     }
   </style>
 </head>
 <body>
-  <h1 class="game-title">TETRIS</h1>
-  
-  <div class="game-container">
-    <div class="game-board-wrapper">
-      <canvas id="gameCanvas" width="300" height="600"></canvas>
-    </div>
-    
-    <div class="side-panel">
-      <div class="panel-box">
-        <div class="panel-label">Score</div>
-        <div class="panel-value score-value" id="scoreDisplay">0</div>
-      </div>
-      
-      <div class="panel-box">
-        <div class="panel-label">Level</div>
-        <div class="panel-value" id="levelDisplay">0</div>
-      </div>
-      
-      <div class="panel-box">
-        <div class="panel-label">Lines</div>
-        <div class="panel-value" id="linesDisplay">0</div>
-      </div>
-      
-      <div class="panel-box">
-        <div class="panel-label">Next</div>
-        <canvas id="nextPieceCanvas" width="100" height="80"></canvas>
-      </div>
-      
-      <div class="panel-box controls-box">
-        <div class="panel-label">Controls</div>
-        <div class="control-row">
-          <span>Move</span>
-          <span><span class="control-key">←</span> <span class="control-key">→</span></span>
-        </div>
-        <div class="control-row">
-          <span>Rotate</span>
-          <span class="control-key">↑</span>
-        </div>
-        <div class="control-row">
-          <span>Soft Drop</span>
-          <span class="control-key">↓</span>
-        </div>
-        <div class="control-row">
-          <span>Hard Drop</span>
-          <span class="control-key">SPACE</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="touch-controls">
-    <div class="touch-row">
-      <button class="touch-btn" id="btnRotate">↻</button>
-    </div>
-    <div class="touch-row">
-      <button class="touch-btn" id="btnLeft">◀</button>
-      <button class="touch-btn" id="btnDrop">▼</button>
-      <button class="touch-btn" id="btnRight">▶</button>
-    </div>
-    <div class="touch-row">
-      <button class="touch-btn" id="btnHardDrop" style="width: 130px;">⏬ DROP</button>
-    </div>
-  </div>
-
-  <div class="game-over-overlay" id="gameOverOverlay">
-    <div class="game-over-text">GAME OVER</div>
-    <div class="final-score">Final Score: <span id="finalScore">0</span></div>
-    <button class="restart-btn" id="restartBtn">PLAY AGAIN</button>
-  </div>
-
+  <h1>TETRIS</h1>
+  <p class="subtitle">100% WebAssembly - All rendering done in WASM</p>
+  <canvas id="game"></canvas>
+  <p class="controls">
+    <span>←→</span> Move
+    <span>↑</span> Rotate
+    <span>↓</span> Drop
+    <span>SPACE</span> Hard Drop
+  </p>
   <script src="game.js"></script>
 </body>
 </html>
